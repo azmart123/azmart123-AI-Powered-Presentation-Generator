@@ -96,6 +96,36 @@ const App: React.FC = () => {
         setAppState('INPUT');
         setGenerationTime(null);
     };
+    
+    const handleRegenerateImage = useCallback(async (slideIndex: number) => {
+        const slideToUpdate = slides[slideIndex];
+        if (!slideToUpdate || !slideToUpdate.imagePrompt) return;
+        
+        setSlides(currentSlides =>
+            currentSlides.map((s, i) =>
+                i === slideIndex ? { ...s, isImageLoading: true } : s
+            )
+        );
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            const imageUrl = await generateSlideImage(ai, slideToUpdate.imagePrompt, advancedOptions.imageStyle);
+            
+            setSlides(currentSlides =>
+                currentSlides.map((s, i) =>
+                    i === slideIndex ? { ...s, imageUrl, isImageLoading: false } : s
+                )
+            );
+        } catch (err) {
+            console.error("Failed to regenerate image:", err);
+            setSlides(currentSlides =>
+                currentSlides.map((s, i) =>
+                    i === slideIndex ? { ...s, isImageLoading: false } : s
+                )
+            );
+        }
+    }, [slides, advancedOptions.imageStyle]);
+
 
     const renderContent = () => {
         switch (appState) {
@@ -107,10 +137,13 @@ const App: React.FC = () => {
                         slides={slides}
                         onSlidesUpdate={setSlides}
                         theme={selectedTheme}
+                        onThemeChange={setSelectedTheme}
                         layout={selectedLayout}
+                        onLayoutChange={setSelectedLayout}
                         onDownload={handleDownload}
                         onRestart={handleRestart}
                         generationTime={generationTime}
+                        onRegenerateImage={handleRegenerateImage}
                     />
                 );
             case 'ERROR':

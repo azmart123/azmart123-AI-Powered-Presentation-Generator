@@ -1,26 +1,35 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Slide as SlideType, Theme, Layout } from '../types';
 import Slide from './Slide';
+import DesignPanel from './DesignPanel';
 import { 
     ArrowLeftIcon, ArrowRightIcon, DownloadIcon, RestartIcon, EditIcon, 
-    CheckIcon, SparklesIcon, NotesIcon, FullscreenEnterIcon, FullscreenExitIcon
+    CheckIcon, SparklesIcon, NotesIcon, FullscreenEnterIcon, FullscreenExitIcon,
+    PaintBrushIcon
 } from './IconComponents';
 
 interface PresentationViewProps {
     slides: SlideType[];
     theme: Theme;
+    onThemeChange: (theme: Theme) => void;
     layout: Layout;
+    onLayoutChange: (layout: Layout) => void;
     onDownload: () => void;
     onRestart: () => void;
     onSlidesUpdate: (slides: SlideType[]) => void;
     generationTime: number | null;
+    onRegenerateImage: (slideIndex: number) => void;
 }
 
-const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layout, onDownload, onRestart, onSlidesUpdate, generationTime }) => {
+const PresentationView: React.FC<PresentationViewProps> = ({ 
+    slides, theme, onThemeChange, layout, onLayoutChange, onDownload, 
+    onRestart, onSlidesUpdate, generationTime, onRegenerateImage 
+}) => {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isEditing, setIsEditing] = useState(false);
     const [isNotesVisible, setIsNotesVisible] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isDesignPanelOpen, setIsDesignPanelOpen] = useState(false);
     const presentationContainerRef = useRef<HTMLDivElement>(null);
 
     const nextSlide = useCallback(() => {
@@ -31,13 +40,17 @@ const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layo
         setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
     }, [slides.length]);
     
-    const handleSlideContentChange = (field: 'title' | 'content', newText: string, contentIndex?: number) => {
+    const handleSlideContentChange = (field: 'title' | 'content' | 'speakerNotes' | 'imagePrompt', newText: string, contentIndex?: number) => {
         const newSlides = slides.map((s, i) => {
             if (i !== currentSlide) return s;
 
             const slideToUpdate = { ...s };
             if (field === 'title') {
                 slideToUpdate.title = newText;
+            } else if (field === 'speakerNotes') {
+                slideToUpdate.speakerNotes = newText;
+            } else if (field === 'imagePrompt') {
+                slideToUpdate.imagePrompt = newText;
             } else if (field === 'content' && contentIndex !== undefined) {
                 const newContent = [...slideToUpdate.content];
                 newContent[contentIndex] = newText;
@@ -74,15 +87,6 @@ const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layo
         newContent.splice(destinationIndex, 0, removed);
         slideToUpdate.content = newContent;
         newSlides[currentSlide] = slideToUpdate;
-        onSlidesUpdate(newSlides);
-    };
-
-
-    const handleSpeakerNotesChange = (newText: string) => {
-        const newSlides = slides.map((s, i) => {
-            if (i !== currentSlide) return s;
-            return { ...s, speakerNotes: newText };
-        });
         onSlidesUpdate(newSlides);
     };
 
@@ -124,6 +128,7 @@ const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layo
                                 onAddItem={handleAddContentItem}
                                 onRemoveItem={handleRemoveContentItem}
                                 onReorderItem={handleReorderContentItem}
+                                onRegenerateImage={() => onRegenerateImage(currentSlide)}
                             />
                         </div>
                     ))}
@@ -144,6 +149,10 @@ const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layo
                             <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ${isEditing ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`} title={isEditing ? 'Finish Editing' : 'Edit Slide Content'}>
                                 {isEditing ? <CheckIcon className="w-5 h-5" /> : <EditIcon className="w-5 h-5" />}
                                 {isEditing ? 'Done' : 'Edit'}
+                            </button>
+                            <button onClick={() => setIsDesignPanelOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200" title="Customize Design">
+                                <PaintBrushIcon className="w-5 h-5" />
+                                Design
                             </button>
                              <button onClick={onDownload} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200" title="Download as PPTX">
                                 <DownloadIcon className="w-5 h-5" />
@@ -209,7 +218,7 @@ const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layo
                     {isEditing ? (
                         <textarea
                             value={slides[currentSlide].speakerNotes}
-                            onChange={(e) => handleSpeakerNotesChange(e.target.value)}
+                            onChange={(e) => handleSlideContentChange('speakerNotes', e.target.value)}
                             className="w-full h-32 p-2 bg-slate-900 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 transition duration-200 text-slate-300 resize-y"
                             placeholder="Edit speaker notes..."
                         />
@@ -220,6 +229,14 @@ const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layo
                     )}
                 </div>
             )}
+             <DesignPanel 
+                isOpen={isDesignPanelOpen}
+                onClose={() => setIsDesignPanelOpen(false)}
+                theme={theme}
+                onThemeChange={onThemeChange}
+                layout={layout}
+                onLayoutChange={onLayoutChange}
+            />
         </div>
     );
 };

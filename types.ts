@@ -4,6 +4,7 @@ export interface Slide {
     imagePrompt: string;
     imageUrl: string;
     speakerNotes: string;
+    isImageLoading?: boolean;
 }
 
 export interface Theme {

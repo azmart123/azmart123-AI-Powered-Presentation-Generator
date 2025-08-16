@@ -150,49 +150,107 @@ const LandingView: React.FC<LandingViewProps> = ({
                     </div>
                 )}
                 
-                {/* Step 3: Advanced */}
+                {/* Step 3: Details */}
                 {step === 3 && (
-                     <div className="space-y-6 animate-fade-in">
-                        <div className="flex items-center justify-between border-b border-slate-700 pb-4">
-                            <label className="font-medium text-slate-200">Include Topic-Related Images</label>
-                            <button type="button" role="switch" aria-checked={advancedOptions.includeImages} onClick={() => handleToggleChange('includeImages', !advancedOptions.includeImages)} className={`${advancedOptions.includeImages ? 'bg-indigo-600' : 'bg-slate-600'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800`}>
-                                <span aria-hidden="true" className={`${advancedOptions.includeImages ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`} />
-                            </button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <label htmlFor="slideCount" className="block text-sm font-medium text-slate-300 mb-2">Slide Count: <span className="font-bold text-white">{advancedOptions.slideCount}</span></label>
-                                <input type="range" id="slideCount" name="slideCount" min="3" max="15" value={advancedOptions.slideCount} onChange={handleAdvancedChange} className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
-                            </div>
-                            <div>
-                                <label htmlFor="detailLevel" className="block text-sm font-medium text-slate-300 mb-2">Detail Level</label>
-                                <select id="detailLevel" name="detailLevel" value={advancedOptions.detailLevel} onChange={handleAdvancedChange} className={inputClass}>
-                                    {DETAIL_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
-                                </select>
-                            </div>
-                             <div>
-                                <label htmlFor="presentationStyle" className="block text-sm font-medium text-slate-300 mb-2">Presentation Style</label>
-                                <select id="presentationStyle" name="presentationStyle" value={advancedOptions.presentationStyle} onChange={handleAdvancedChange} className={inputClass}>
-                                    {PRESENTATION_STYLES.map(style => <option key={style} value={style}>{style}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label htmlFor="imageStyle" className="block text-sm font-medium text-slate-300 mb-2">Image Style</label>
-                                <input type="text" id="imageStyle" name="imageStyle" value={advancedOptions.imageStyle} onChange={handleAdvancedChange} placeholder="e.g., Photorealistic, minimalist" className={inputClass} disabled={!advancedOptions.includeImages} />
-                            </div>
-                            <div>
-                                <label htmlFor="targetAudience" className="block text-sm font-medium text-slate-300 mb-2">Target Audience</label>
-                                <input type="text" id="targetAudience" name="targetAudience" value={advancedOptions.targetAudience} onChange={handleAdvancedChange} placeholder="e.g., High school students" className={inputClass} />
-                            </div>
-                             <div className="md:col-span-2">
-                                <label htmlFor="keyTakeaway" className="block text-sm font-medium text-slate-300 mb-2">Key Takeaway (Optional)</label>
-                                <input type="text" id="keyTakeaway" name="keyTakeaway" value={advancedOptions.keyTakeaway} onChange={handleAdvancedChange} placeholder="The main message to leave with the audience" className={inputClass} />
+                    <div className="space-y-6 animate-fade-in">
+                        {/* Card 1: Content & Structure */}
+                        <div className="bg-slate-800/60 p-6 rounded-xl border border-slate-700 backdrop-blur-sm">
+                            <h3 className="text-xl font-semibold text-white mb-5">Content & Structure</h3>
+                            <div className="space-y-6">
+                                <div>
+                                    <label htmlFor="slideCount" className="block text-sm font-medium text-slate-300 mb-2">Slide Count: <span className="font-bold text-white">{advancedOptions.slideCount}</span></label>
+                                    <input type="range" id="slideCount" name="slideCount" min="3" max="15" value={advancedOptions.slideCount} onChange={handleAdvancedChange} className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">Detail Level</label>
+                                    <div className="grid grid-cols-3 gap-2 rounded-lg bg-slate-900 p-1">
+                                        {DETAIL_LEVELS.map(level => (
+                                            <button
+                                                key={level}
+                                                type="button"
+                                                onClick={() => setAdvancedOptions({ ...advancedOptions, detailLevel: level })}
+                                                className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500 ${
+                                                    advancedOptions.detailLevel === level
+                                                        ? 'bg-indigo-600 text-white shadow-md'
+                                                        : 'bg-transparent text-slate-300 hover:bg-slate-700'
+                                                }`}
+                                            >
+                                                {level}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label htmlFor="keyTakeaway" className="block text-sm font-medium text-slate-300 mb-2">Key Takeaway <span className="text-slate-400">(Optional)</span></label>
+                                    <input type="text" id="keyTakeaway" name="keyTakeaway" value={advancedOptions.keyTakeaway} onChange={handleAdvancedChange} placeholder="The main message to leave with the audience" className={inputClass} />
+                                </div>
                             </div>
                         </div>
+
+                        {/* Card 2: Audience & Tone */}
+                        <div className="bg-slate-800/60 p-6 rounded-xl border border-slate-700 backdrop-blur-sm">
+                            <h3 className="text-xl font-semibold text-white mb-5">Audience & Tone</h3>
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">Presentation Style</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        {PRESENTATION_STYLES.map(style => (
+                                            <button
+                                                key={style}
+                                                type="button"
+                                                onClick={() => setAdvancedOptions({ ...advancedOptions, presentationStyle: style })}
+                                                className={`px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500 ${
+                                                    advancedOptions.presentationStyle === style
+                                                        ? 'bg-indigo-600 border-transparent text-white scale-105 shadow-lg'
+                                                        : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-700 hover:border-slate-500'
+                                                }`}
+                                            >
+                                                {style}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label htmlFor="targetAudience" className="block text-sm font-medium text-slate-300 mb-2">Target Audience <span className="text-slate-400">(Optional)</span></label>
+                                        <input type="text" id="targetAudience" name="targetAudience" value={advancedOptions.targetAudience} onChange={handleAdvancedChange} placeholder="e.g., University students, marketing VPs" className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="tone" className="block text-sm font-medium text-slate-300 mb-2">Tone of Voice <span className="text-slate-400">(Optional)</span></label>
+                                        <input type="text" id="tone" name="tone" value={advancedOptions.tone} onChange={handleAdvancedChange} placeholder="e.g., enthusiastic, formal, witty" className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="brandName" className="block text-sm font-medium text-slate-300 mb-2">Brand Name <span className="text-slate-400">(Optional)</span></label>
+                                        <input type="text" id="brandName" name="brandName" value={advancedOptions.brandName} onChange={handleAdvancedChange} placeholder="Your company or product name" className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="additionalKeywords" className="block text-sm font-medium text-slate-300 mb-2">Keywords <span className="text-slate-400">(Optional)</span></label>
+                                        <input type="text" id="additionalKeywords" name="additionalKeywords" value={advancedOptions.additionalKeywords} onChange={handleAdvancedChange} placeholder="Comma-separated keywords" className={inputClass} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Card 3: Visuals */}
+                        <div className="bg-slate-800/60 p-6 rounded-xl border border-slate-700 backdrop-blur-sm">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xl font-semibold text-white">Visuals</h3>
+                                <button type="button" role="switch" aria-checked={advancedOptions.includeImages} onClick={() => handleToggleChange('includeImages', !advancedOptions.includeImages)} className={`${advancedOptions.includeImages ? 'bg-indigo-600' : 'bg-slate-600'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800`}>
+                                    <span aria-hidden="true" className={`${advancedOptions.includeImages ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`} />
+                                </button>
+                            </div>
+                            <div className={`pt-6 transition-all duration-500 ease-in-out ${advancedOptions.includeImages ? 'opacity-100 max-h-40' : 'opacity-0 max-h-0 overflow-hidden pointer-events-none'}`}>
+                                <div>
+                                    <label htmlFor="imageStyle" className="block text-sm font-medium text-slate-300 mb-2">Image Style</label>
+                                    <input type="text" id="imageStyle" name="imageStyle" value={advancedOptions.imageStyle} onChange={handleAdvancedChange} placeholder="e.g., photorealistic, minimalist, abstract" className={inputClass} />
+                                    <p className="text-xs text-slate-400 mt-2">Describe the visual aesthetic for the generated images.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Navigation */}
                         <div className="mt-8 flex justify-between items-center">
-                             <button onClick={prevStep} className={`${buttonClass} bg-slate-600 hover:bg-slate-700`}>
+                            <button onClick={prevStep} className={`${buttonClass} bg-slate-600 hover:bg-slate-700`}>
                                 <ChevronLeftIcon className="w-5 h-5"/> Back
                             </button>
                             <button onClick={onGenerate} disabled={!topic.trim()} className={`${buttonClass} w-auto`}>
