@@ -48,6 +48,36 @@ const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layo
         onSlidesUpdate(newSlides);
     };
 
+    const handleAddContentItem = () => {
+        const newSlides = [...slides];
+        const slideToUpdate = { ...newSlides[currentSlide] };
+        slideToUpdate.content = [...slideToUpdate.content, 'New bullet point'];
+        newSlides[currentSlide] = slideToUpdate;
+        onSlidesUpdate(newSlides);
+    };
+
+    const handleRemoveContentItem = (contentIndex: number) => {
+        const newSlides = [...slides];
+        const slideToUpdate = { ...newSlides[currentSlide] };
+        const newContent = [...slideToUpdate.content];
+        newContent.splice(contentIndex, 1);
+        slideToUpdate.content = newContent;
+        newSlides[currentSlide] = slideToUpdate;
+        onSlidesUpdate(newSlides);
+    };
+
+    const handleReorderContentItem = (sourceIndex: number, destinationIndex: number) => {
+        const newSlides = [...slides];
+        const slideToUpdate = { ...newSlides[currentSlide] };
+        const newContent = Array.from(slideToUpdate.content);
+        const [removed] = newContent.splice(sourceIndex, 1);
+        newContent.splice(destinationIndex, 0, removed);
+        slideToUpdate.content = newContent;
+        newSlides[currentSlide] = slideToUpdate;
+        onSlidesUpdate(newSlides);
+    };
+
+
     const handleSpeakerNotesChange = (newText: string) => {
         const newSlides = slides.map((s, i) => {
             if (i !== currentSlide) return s;
@@ -76,22 +106,78 @@ const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layo
 
     return (
         <div className="w-full max-w-7xl mx-auto flex flex-col items-center animate-fade-in">
-            {/* Main Slide Preview */}
-            <div ref={presentationContainerRef} className="w-full aspect-video shadow-2xl rounded-xl overflow-hidden mb-4 border-4 border-slate-700 bg-slate-900 relative">
-                {slides.map((slide, index) => (
-                    <div 
-                        key={index} 
-                        className={`absolute inset-0 w-full h-full transition-opacity duration-500 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                    >
-                        <Slide
-                            slide={slide}
-                            theme={theme}
-                            layout={layout}
-                            isEditing={isEditing}
-                            onSlideChange={handleSlideContentChange}
-                        />
+             {/* This container wraps the presentation and controls to enable fullscreen editing */}
+            <div ref={presentationContainerRef} className="w-full relative group/presentation fullscreen:bg-slate-900 flex flex-col justify-center items-center">
+                {/* Main Slide Preview */}
+                <div className="w-full aspect-video shadow-2xl rounded-xl overflow-hidden border-4 border-slate-700 bg-slate-900 relative">
+                    {slides.map((slide, index) => (
+                        <div 
+                            key={index} 
+                            className={`absolute inset-0 w-full h-full transition-opacity duration-500 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                        >
+                            <Slide
+                                slide={slide}
+                                theme={theme}
+                                layout={layout}
+                                isEditing={isEditing}
+                                onSlideChange={handleSlideContentChange}
+                                onAddItem={handleAddContentItem}
+                                onRemoveItem={handleRemoveContentItem}
+                                onReorderItem={handleReorderContentItem}
+                            />
+                        </div>
+                    ))}
+                </div>
+
+                {/* Controls - dynamically positioned for normal and fullscreen views */}
+                <div className={`w-full max-w-5xl transition-all duration-300 z-10
+                    ${isFullscreen 
+                        ? 'absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover/presentation:opacity-100 focus-within:opacity-100' 
+                        : 'mt-4'
+                    }`}>
+                    <div className="p-3 bg-slate-800/70 backdrop-blur-sm rounded-xl border border-slate-700 flex justify-between items-center shadow-lg">
+                        <div className="flex items-center gap-2">
+                             <button onClick={onRestart} className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200" title="Start Over">
+                                <RestartIcon className="w-5 h-5" />
+                                New
+                            </button>
+                            <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ${isEditing ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`} title={isEditing ? 'Finish Editing' : 'Edit Slide Content'}>
+                                {isEditing ? <CheckIcon className="w-5 h-5" /> : <EditIcon className="w-5 h-5" />}
+                                {isEditing ? 'Done' : 'Edit'}
+                            </button>
+                             <button onClick={onDownload} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200" title="Download as PPTX">
+                                <DownloadIcon className="w-5 h-5" />
+                                Download
+                            </button>
+                        </div>
+                        
+                         {generationTime && !isEditing && (
+                            <div className="hidden md:flex items-center gap-2 text-sm text-slate-400">
+                               <SparklesIcon className="w-5 h-5 text-indigo-400" />
+                               <p>Generated in {generationTime.toFixed(2)}s</p>
+                            </div>
+                        )}
+
+
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setIsNotesVisible(!isNotesVisible)} className={`p-3 rounded-lg transition duration-200 ${isNotesVisible ? 'bg-indigo-600 text-white' : 'bg-slate-700 hover:bg-slate-600'}`} title="Toggle Speaker Notes">
+                                <NotesIcon className="w-5 h-5" />
+                            </button>
+                             <button onClick={handleFullscreenToggle} className="p-3 rounded-lg bg-slate-700 hover:bg-slate-600 transition duration-200" title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}>
+                                {isFullscreen ? <FullscreenExitIcon className="w-5 h-5" /> : <FullscreenEnterIcon className="w-5 h-5" />}
+                            </button>
+                            <button onClick={prevSlide} className="p-3 rounded-lg bg-slate-700 hover:bg-slate-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isEditing}>
+                                <ArrowLeftIcon className="w-5 h-5" />
+                            </button>
+                            <span className="text-lg font-semibold text-slate-300 w-16 text-center">
+                                {currentSlide + 1} / {slides.length}
+                            </span>
+                            <button onClick={nextSlide} className="p-3 rounded-lg bg-slate-700 hover:bg-slate-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isEditing}>
+                                <ArrowRightIcon className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
-                ))}
+                </div>
             </div>
 
             {/* Thumbnail Filmstrip */}
@@ -134,51 +220,6 @@ const PresentationView: React.FC<PresentationViewProps> = ({ slides, theme, layo
                     )}
                 </div>
             )}
-
-
-            {/* Controls */}
-            <div className="w-full max-w-5xl mt-2 p-3 bg-slate-800/70 backdrop-blur-sm rounded-xl border border-slate-700 flex justify-between items-center shadow-lg">
-                <div className="flex items-center gap-2">
-                     <button onClick={onRestart} className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200" title="Start Over">
-                        <RestartIcon className="w-5 h-5" />
-                        New
-                    </button>
-                    <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ${isEditing ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`} title={isEditing ? 'Finish Editing' : 'Edit Slide Content'}>
-                        {isEditing ? <CheckIcon className="w-5 h-5" /> : <EditIcon className="w-5 h-5" />}
-                        {isEditing ? 'Done' : 'Edit'}
-                    </button>
-                     <button onClick={onDownload} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200" title="Download as PPTX">
-                        <DownloadIcon className="w-5 h-5" />
-                        Download
-                    </button>
-                </div>
-                
-                 {generationTime && !isEditing && (
-                    <div className="hidden md:flex items-center gap-2 text-sm text-slate-400">
-                       <SparklesIcon className="w-5 h-5 text-indigo-400" />
-                       <p>Generated in {generationTime.toFixed(2)}s</p>
-                    </div>
-                )}
-
-
-                <div className="flex items-center gap-2">
-                    <button onClick={() => setIsNotesVisible(!isNotesVisible)} className={`p-3 rounded-lg transition duration-200 ${isNotesVisible ? 'bg-indigo-600 text-white' : 'bg-slate-700 hover:bg-slate-600'}`} title="Toggle Speaker Notes">
-                        <NotesIcon className="w-5 h-5" />
-                    </button>
-                     <button onClick={handleFullscreenToggle} className="p-3 rounded-lg bg-slate-700 hover:bg-slate-600 transition duration-200" title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}>
-                        {isFullscreen ? <FullscreenExitIcon className="w-5 h-5" /> : <FullscreenEnterIcon className="w-5 h-5" />}
-                    </button>
-                    <button onClick={prevSlide} className="p-3 rounded-lg bg-slate-700 hover:bg-slate-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isEditing}>
-                        <ArrowLeftIcon className="w-5 h-5" />
-                    </button>
-                    <span className="text-lg font-semibold text-slate-300 w-16 text-center">
-                        {currentSlide + 1} / {slides.length}
-                    </span>
-                    <button onClick={nextSlide} className="p-3 rounded-lg bg-slate-700 hover:bg-slate-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isEditing}>
-                        <ArrowRightIcon className="w-5 h-5" />
-                    </button>
-                </div>
-            </div>
         </div>
     );
 };

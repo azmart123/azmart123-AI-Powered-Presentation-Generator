@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Slide as SlideType, Theme, Layout } from '../types';
+import { PlusIcon, TrashIcon, GripVerticalIcon } from './IconComponents';
 
 interface SlideProps {
     slide: SlideType;
@@ -7,102 +8,155 @@ interface SlideProps {
     layout: Layout;
     isEditing: boolean;
     onSlideChange: (field: 'title' | 'content', newText: string, contentIndex?: number) => void;
+    onAddItem: () => void;
+    onRemoveItem: (index: number) => void;
+    onReorderItem: (sourceIndex: number, destinationIndex: number) => void;
 }
 
-const Slide: React.FC<SlideProps> = ({ slide, theme, layout, isEditing, onSlideChange }) => {
-    const editableStyles = isEditing 
-        ? 'cursor-text rounded-md px-1 transition-all duration-200 hover:bg-white/10 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-indigo-500'
-        : 'px-1';
-    
-    const handleBlur = (e: React.FocusEvent<HTMLElement>, field: 'title' | 'content', index?: number) => {
-        onSlideChange(field, e.currentTarget.textContent || '', index);
+const AutoResizingTextarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = (props) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    }, [props.value]);
+
+    const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const textarea = e.currentTarget;
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+        if (props.onChange) {
+            props.onChange(e);
+        }
     };
+
+    return <textarea ref={textareaRef} {...props} onInput={handleInput} />;
+};
+
+const Slide: React.FC<SlideProps> = ({ slide, theme, layout, isEditing, onSlideChange, onAddItem, onRemoveItem, onReorderItem }) => {
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+    const handleDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLLIElement>) => {
+        e.preventDefault(); // Necessary to allow dropping
+    };
+    
+    const handleDrop = (e: React.DragEvent<HTMLLIElement>, index: number) => {
+        e.preventDefault();
+        if (draggedIndex === null || draggedIndex === index) {
+            return;
+        }
+        onReorderItem(draggedIndex, index);
+        setDraggedIndex(null);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIndex(null);
+    };
+
+    const sharedInputStyles = "bg-transparent w-full focus:outline-none resize-none overflow-hidden";
+    const titleBaseClasses = "font-bold mb-6";
+    const contentBaseClasses = "";
+
+    const renderEditableTitle = (className: string) => (
+        isEditing ? (
+            <input
+                type="text"
+                value={slide.title}
+                onChange={(e) => onSlideChange('title', e.target.value)}
+                className={`${sharedInputStyles} ${className} focus:bg-white/10 rounded px-2 py-1 -mx-2`}
+                aria-label="Slide Title"
+            />
+        ) : (
+            <h2 className={className}>{slide.title}</h2>
+        )
+    );
+
+    const renderEditableContent = (point: string, index: number, className: string) => (
+        isEditing ? (
+            <AutoResizingTextarea
+                value={point}
+                onChange={(e) => onSlideChange('content', e.target.value, index)}
+                className={`${sharedInputStyles} ${className} focus:bg-white/10 rounded px-2 -mx-2`}
+                aria-label={`Bullet point ${index + 1}`}
+                rows={1}
+            />
+        ) : (
+            <span className={className}>{point}</span>
+        )
+    );
+
+    const renderContentList = (textColor: string, bulletColor: string, hoverTextColor: string) => (
+        <>
+            <ul className="space-y-3">
+                {slide.content.map((point, index) => (
+                    <li
+                        key={index}
+                        className={`group/item flex items-start gap-2 transition-opacity duration-300 ${draggedIndex === index ? 'opacity-30' : 'opacity-100'}`}
+                        draggable={isEditing}
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, index)}
+                        onDragEnd={handleDragEnd}
+                    >
+                        {isEditing && (
+                            <div className="flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity duration-200">
+                                 <div className="flex items-center h-full">
+                                    <button
+                                        className={`cursor-grab text-slate-500 hover:${hoverTextColor}`}
+                                        title="Drag to reorder"
+                                    >
+                                        <GripVerticalIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                         <div className="flex-shrink-0 pt-2.5">
+                            <span className={`w-2.5 h-2.5 rounded-full block ${bulletColor.startsWith('text-') ? bulletColor.replace('text-','bg-') : 'bg-indigo-400'}`}></span>
+                        </div>
+                        <div className="flex-grow">
+                             {renderEditableContent(point, index, `text-lg md:text-xl ${textColor} ${contentBaseClasses}`)}
+                        </div>
+                        {isEditing && (
+                             <div className="flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity duration-200">
+                                 <button onClick={() => onRemoveItem(index)} className={`p-1 rounded-full text-slate-500 hover:bg-red-500/20 hover:text-red-400`} title="Remove point">
+                                    <TrashIcon className="w-5 h-5" />
+                                </button>
+                             </div>
+                        )}
+                    </li>
+                ))}
+            </ul>
+             {isEditing && (
+                 <button onClick={onAddItem} className="mt-6 flex items-center gap-2 text-sm font-semibold text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-2 rounded-lg transition-colors self-start">
+                    <PlusIcon className="w-5 h-5" />
+                    Add Point
+                </button>
+            )}
+        </>
+    );
 
     const textContent = (
         <div className="flex flex-col justify-center h-full p-8 md:p-12 overflow-hidden">
-            <h2 
-                className={`text-3xl md:text-5xl font-bold mb-6 ${theme.titleColor} ${editableStyles}`}
-                contentEditable={isEditing}
-                onBlur={(e) => handleBlur(e, 'title')}
-                suppressContentEditableWarning={true}
-            >
-                {slide.title}
-            </h2>
-            <ul className="space-y-4">
-                {slide.content.map((point, index) => (
-                    <li key={index} className={`flex items-start text-lg md:text-xl ${theme.textColor}`}>
-                        <span className={`mr-4 mt-2 flex-shrink-0 w-2.5 h-2.5 rounded-full ${theme.bulletColor.startsWith('text-') ? theme.bulletColor.replace('text-','bg-') : 'bg-indigo-400'}`}></span>
-                        <span
-                            className={`w-full ${editableStyles}`}
-                            contentEditable={isEditing}
-                            onBlur={(e) => handleBlur(e, 'content', index)}
-                            suppressContentEditableWarning={true}
-                        >
-                            {point}
-                        </span>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
-
-    const overlayTextContent = (
-         <div className="relative z-10 flex flex-col justify-center h-full p-8 md:p-12">
-            <h2 
-                className={`text-3xl md:text-5xl font-bold mb-6 text-white drop-shadow-lg ${editableStyles}`}
-                contentEditable={isEditing}
-                onBlur={(e) => handleBlur(e, 'title')}
-                suppressContentEditableWarning={true}
-            >
-                {slide.title}
-            </h2>
-            <ul className="space-y-4">
-                {slide.content.map((point, index) => (
-                    <li key={index} className={`flex items-start text-lg md:text-xl text-gray-100 drop-shadow-md`}>
-                        <span className={`mr-4 mt-2 flex-shrink-0 w-2.5 h-2.5 rounded-full bg-indigo-300`}></span>
-                        <span
-                            className={`w-full ${editableStyles}`}
-                            contentEditable={isEditing}
-                            onBlur={(e) => handleBlur(e, 'content', index)}
-                            suppressContentEditableWarning={true}
-                        >
-                            {point}
-                        </span>
-                    </li>
-                ))}
-            </ul>
+             {renderEditableTitle(`text-3xl md:text-5xl ${theme.titleColor} ${titleBaseClasses}`)}
+             {renderContentList(theme.textColor, theme.bulletColor, 'text-slate-200')}
         </div>
     );
     
-    const overlayPartialTextContent = (
-         <div className="p-8 md:p-12 bg-black/60 backdrop-blur-sm h-full flex flex-col justify-center">
-            <h2 
-                className={`text-2xl md:text-4xl font-bold mb-4 text-white drop-shadow-lg ${editableStyles}`}
-                contentEditable={isEditing}
-                onBlur={(e) => handleBlur(e, 'title')}
-                suppressContentEditableWarning={true}
-            >
-                {slide.title}
-            </h2>
-            <ul className="space-y-2">
-                {slide.content.map((point, index) => (
-                    <li key={index} className={`flex items-start text-base md:text-lg text-gray-100 drop-shadow-md`}>
-                        <span className={`mr-3 mt-2 flex-shrink-0 w-2 h-2 rounded-full bg-indigo-300`}></span>
-                        <span
-                            className={`w-full ${editableStyles}`}
-                            contentEditable={isEditing}
-                            onBlur={(e) => handleBlur(e, 'content', index)}
-                            suppressContentEditableWarning={true}
-                        >
-                            {point}
-                        </span>
-                    </li>
-                ))}
-            </ul>
+    const overlayTextContent = (bgClass: string) => (
+        <div className={`relative z-10 flex flex-col justify-center h-full p-8 md:p-12 ${bgClass}`}>
+             {renderEditableTitle(`text-3xl md:text-5xl text-white drop-shadow-lg ${titleBaseClasses}`)}
+             {renderContentList('text-gray-100 drop-shadow-md', 'bg-indigo-300', 'text-white')}
         </div>
     );
 
-    // If there's no image URL, render a text-only, full-width slide
     if (!slide.imageUrl) {
         return (
             <div className={`w-full h-full aspect-video ${theme.background} flex`}>
@@ -121,17 +175,17 @@ const Slide: React.FC<SlideProps> = ({ slide, theme, layout, isEditing, onSlideC
         let textComponent;
         switch (layout.imagePosition) {
             case 'overlay-top':
-                textComponent = <div className={layout.textClassName}>{overlayPartialTextContent}</div>;
+                textComponent = <div className={layout.textClassName}>{overlayTextContent('bg-black/60 backdrop-blur-sm h-full')}</div>;
                 break;
             case 'overlay-bottom':
-                textComponent = <div className={layout.textClassName}>{overlayPartialTextContent}</div>;
+                textComponent = <div className={layout.textClassName}>{overlayTextContent('bg-black/60 backdrop-blur-sm h-full')}</div>;
                 break;
             case 'overlay-center':
             default:
                  textComponent = (
                     <>
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
-                        <div className={layout.textClassName}>{overlayTextContent}</div>
+                        <div className={layout.textClassName}>{overlayTextContent('')}</div>
                     </>
                  );
                  break;
