@@ -1,0 +1,5 @@
+{
+  "name": "AI Presentation Generator",
+  "description": "A web application that uses AI to generate professional presentations from a user-provided topic. It creates slide content, generates relevant images for each slide, and allows users to download the final presentation.",
+  "requestFramePermissions": []
+}
