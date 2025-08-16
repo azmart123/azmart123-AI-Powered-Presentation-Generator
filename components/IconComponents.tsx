@@ -144,3 +144,50 @@ export const GripVerticalIcon: React.FC<{ className?: string }> = ({ className }
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 4.5v15m6-15v15" />
     </svg>
 );
+
+export const ChevronDownIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+    </svg>
+);
+
+export const DocumentTextIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.165 2.251c-.22.22-.44.442-.662.662m.662-.662a3.375 3.375 0 014.242 0l1.947 1.947a1.125 1.125 0 010 1.591l-5.25 5.25a1.125 1.125 0 01-1.59 0l-1.948-1.947a3.375 3.375 0 010-4.242m.662 6.62l3.375 3.375m-3.375-3.375a3.375 3.375 0 01-4.242 0l-1.947-1.947a1.125 1.125 0 010-1.591l5.25-5.25a1.125 1.125 0 011.59 0l1.947 1.947a3.375 3.375 0 010 4.242zM10.5 8.625a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" />
+    </svg>
+);
+
+export const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 00-12 0c-1.141.66-2.5 1-4 1v-1c0-1.03 1-2 3-2 1.5 0 2.5.5 4-1 .5-.167 1-.333 1.5-.5C12 14.5 12.5 14 13 14h1.5c.5 0 1 .5 1.5 1 .5.167 1 .333 1.5.5 1.5.5 2.5 1 4 1 2 0 3 1 3 2v1c-1.5 0-2.859-.34-4-1zM12 12a3 3 0 100-6 3 3 0 000 6z" />
+    </svg>
+);
+
+export const PhotoIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm16.5-1.5V6" />
+    </svg>
+);
+
+export const SpinnerIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        className={`animate-spin ${className || 'w-5 h-5'}`}
+    >
+        <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+        ></circle>
+        <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        ></path>
+    </svg>
+);

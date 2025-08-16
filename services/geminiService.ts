@@ -4,8 +4,12 @@ import { AdvancedOptions } from '../types';
 interface SlideContent {
     title: string;
     content: string[];
-    imagePrompt: string;
     speakerNotes: string;
+}
+
+interface SlideContextForImage {
+    title: string;
+    content: string[];
 }
 
 export const generatePresentationContent = async (ai: GoogleGenAI, topic: string, options: AdvancedOptions): Promise<SlideContent[]> => {
@@ -41,99 +45,104 @@ export const generatePresentationContent = async (ai: GoogleGenAI, topic: string
 For each slide, you must provide:
 1.  A short, engaging title.
 2.  An array of 3-4 concise bullet points for the slide content, matching the requested detail level and style.
-3.  Detailed speaker notes for the presenter to read during the presentation. These should expand on the bullet points and provide a conversational script.`;
-
-    const schemaProperties: any = {
-        title: {
-            type: Type.STRING,
-            description: 'A short, engaging title for the slide.'
-        },
-        content: {
-            type: Type.ARRAY,
-            items: {
-                type: Type.STRING
-            },
-            description: 'An array of 3-4 concise bullet points for the slide content.'
-        },
-        speakerNotes: {
-            type: Type.STRING,
-            description: 'Detailed speaker notes for the presenter, expanding on the bullet points.'
-        }
-    };
-    const requiredFields = ["title", "content", "speakerNotes"];
+3.  Detailed speaker notes for the presenter to read during the presentation. These should expand on the bullet points and provide a conversational script.
+`;
 
     if (options.includeImages) {
-        slideInstructions += `\n4.  A descriptive image prompt for an AI image generator. This prompt should create a relevant visual for the slide. The desired visual style is: **${options.imageStyle}**.`;
-        schemaProperties.imagePrompt = {
-            type: Type.STRING,
-            description: 'A descriptive prompt for an AI image generator to create a relevant visual for the slide.'
-        };
-        requiredFields.push("imagePrompt");
+        // No special instructions needed for image prompt generation anymore.
+    } else {
+        // No change needed here
     }
-    
+
     prompt += slideInstructions;
-    prompt += `
 
-Return ONLY the raw JSON array based on the provided schema. Do not include any other text or explanations.
-    `;
-
-    const presentationSchema = {
+    const responseSchema = {
         type: Type.ARRAY,
         items: {
             type: Type.OBJECT,
-            properties: schemaProperties,
-            required: requiredFields
+            properties: {
+                title: { type: Type.STRING },
+                content: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                },
+                speakerNotes: { type: Type.STRING }
+            },
+            required: ["title", "content", "speakerNotes"]
         }
     };
 
-    try {
-        const response: GenerateContentResponse = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: presentationSchema,
-            },
-        });
-        
-        const jsonText = response.text.trim();
-        const parsedData = JSON.parse(jsonText);
-        
-        if (Array.isArray(parsedData)) {
-            return parsedData.map(slide => ({
-                title: slide.title || '',
-                content: slide.content || [],
-                imagePrompt: slide.imagePrompt || '', // Ensure imagePrompt exists
-                speakerNotes: slide.speakerNotes || '',
-            }));
-        }
-        return [];
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema,
+        },
+    });
 
-    } catch (error) {
-        console.error("Error generating presentation content:", error);
-        throw new Error("Failed to parse presentation content from AI. The response might be malformed.");
+    try {
+        const jsonResponse = JSON.parse(response.text);
+        return jsonResponse as SlideContent[];
+    } catch (e) {
+        console.error("Failed to parse JSON response:", response.text);
+        throw new Error("The AI returned an invalid presentation format. Please try again.");
     }
 };
 
+export const generateSlideImage = async (ai: GoogleGenAI, context: SlideContextForImage, imageStyle: string): Promise<string> => {
+    const detailedPrompt = `
+        Generate a professional, high-quality image for a presentation slide with the following topic.
+        The image must be directly relevant to the slide's content and visually engaging.
+        The desired style is "${imageStyle}".
 
-export const generateSlideImage = async (ai: GoogleGenAI, prompt: string, imageStyle: string): Promise<string> => {
-     const fullPrompt = `${imageStyle}, cinematic, high-detail, professional photograph of: ${prompt}`;
-    try {
-        const response = await ai.models.generateImages({
-            model: 'imagen-3.0-generate-002',
-            prompt: fullPrompt,
-            config: {
-                numberOfImages: 1,
-                outputMimeType: 'image/png',
-                aspectRatio: '16:9',
-            },
-        });
+        Slide Title: "${context.title}"
+        Slide Content:
+        - ${context.content.join('\n- ')}
 
-        const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
-        return `data:image/png;base64,${base64ImageBytes}`;
-    } catch (error) {
-        console.error("Error generating image:", error);
-        // Return a placeholder image on failure
-        return `https://picsum.photos/seed/${encodeURIComponent(prompt)}/1280/720`;
+        Based on the title and content, create a powerful visual metaphor or a literal representation of the core message.
+        Do not include any text, logos, or watermarks in the image. The image should be suitable for a professional presentation.
+    `;
+    
+    const response = await ai.models.generateImages({
+        model: 'imagen-3.0-generate-002',
+        prompt: detailedPrompt,
+        config: {
+            numberOfImages: 1,
+            outputMimeType: 'image/jpeg',
+            aspectRatio: '16:9',
+        },
+    });
+
+    if (!response.generatedImages || response.generatedImages.length === 0) {
+        throw new Error("Image generation failed. No images were returned.");
     }
+
+    return `data:image/jpeg;base64,${response.generatedImages[0].image.imageBytes}`;
+};
+
+export const modifyTextWithAI = async (
+    ai: GoogleGenAI,
+    text: string,
+    action: string,
+    context: { title: string; surroundingPoints?: string[] }
+): Promise<string> => {
+    const prompt = `
+        You are an AI writing assistant helping to refine presentation content.
+        The user is working on a slide with the title: "${context.title}".
+        ${context.surroundingPoints ? `Other points on the slide are: ${context.surroundingPoints.join(', ')}` : ''}
+
+        The user wants to modify this piece of text: "${text}"
+        The requested action is: "${action}"
+
+        Perform the action and return only the modified text, without any introductory phrases or quotation marks.
+        If suggesting alternatives, provide them as a single string, separated by newlines.
+    `;
+    
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt
+    });
+
+    return response.text.trim();
 };

@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { Slide, AppState, Theme, Layout, AdvancedOptions } from './types';
 import { THEMES, LAYOUTS } from './constants';
-import { generatePresentationContent, generateSlideImage } from './services/geminiService';
+import { generatePresentationContent, generateSlideImage, modifyTextWithAI } from './services/geminiService';
 import LandingView from './components/LandingView';
 import Loader from './components/Loader';
 import PresentationView from './components/PresentationView';
@@ -57,7 +57,7 @@ const App: React.FC = () => {
                 slidesWithVisuals = await Promise.all(
                     presentationData.map(async (slideContent, index) => {
                         setLoadingMessage(`Designing slide visuals... (${index + 1}/${presentationData.length})`);
-                        const imageUrl = await generateSlideImage(ai, slideContent.imagePrompt, advancedOptions.imageStyle);
+                        const imageUrl = await generateSlideImage(ai, slideContent, advancedOptions.imageStyle);
                         return { ...slideContent, imageUrl };
                     })
                 );
@@ -99,7 +99,7 @@ const App: React.FC = () => {
     
     const handleRegenerateImage = useCallback(async (slideIndex: number) => {
         const slideToUpdate = slides[slideIndex];
-        if (!slideToUpdate || !slideToUpdate.imagePrompt) return;
+        if (!slideToUpdate) return;
         
         setSlides(currentSlides =>
             currentSlides.map((s, i) =>
@@ -109,7 +109,7 @@ const App: React.FC = () => {
 
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-            const imageUrl = await generateSlideImage(ai, slideToUpdate.imagePrompt, advancedOptions.imageStyle);
+            const imageUrl = await generateSlideImage(ai, slideToUpdate, advancedOptions.imageStyle);
             
             setSlides(currentSlides =>
                 currentSlides.map((s, i) =>
@@ -125,6 +125,44 @@ const App: React.FC = () => {
             );
         }
     }, [slides, advancedOptions.imageStyle]);
+
+    const handleAiTextModification = async (
+        slideIndex: number,
+        target: 'title' | 'content',
+        action: string,
+        contentIndex?: number
+    ): Promise<void> => {
+        const slideToUpdate = slides[slideIndex];
+        if (!slideToUpdate) return;
+
+        let textToModify: string;
+        let context: { title: string; surroundingPoints?: string[] } = { title: slideToUpdate.title };
+
+        if (target === 'title') {
+            textToModify = slideToUpdate.title;
+        } else if (target === 'content' && contentIndex !== undefined) {
+            textToModify = slideToUpdate.content[contentIndex];
+            context.surroundingPoints = slideToUpdate.content.filter((_, i) => i !== contentIndex);
+        } else {
+            return;
+        }
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            const modifiedText = await modifyTextWithAI(ai, textToModify, action, context);
+
+            const newSlides = [...slides];
+            if (target === 'title') {
+                newSlides[slideIndex].title = modifiedText;
+            } else if (target === 'content' && contentIndex !== undefined) {
+                newSlides[slideIndex].content[contentIndex] = modifiedText;
+            }
+            setSlides(newSlides);
+        } catch (err) {
+            console.error("Failed to modify text with AI:", err);
+            // Optionally set an error state to show in the UI
+        }
+    };
 
 
     const renderContent = () => {
@@ -144,6 +182,7 @@ const App: React.FC = () => {
                         onRestart={handleRestart}
                         generationTime={generationTime}
                         onRegenerateImage={handleRegenerateImage}
+                        onAiTextModification={handleAiTextModification}
                     />
                 );
             case 'ERROR':

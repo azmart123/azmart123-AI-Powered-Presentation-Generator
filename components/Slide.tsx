@@ -1,17 +1,19 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Slide as SlideType, Theme, Layout } from '../types';
-import { PlusIcon, TrashIcon, GripVerticalIcon, SparklesIcon } from './IconComponents';
+import { PlusIcon, TrashIcon, GripVerticalIcon, SparklesIcon, SpinnerIcon } from './IconComponents';
 
 interface SlideProps {
     slide: SlideType;
     theme: Theme;
     layout: Layout;
     isEditing: boolean;
-    onSlideChange: (field: 'title' | 'content' | 'imagePrompt', newText: string, contentIndex?: number) => void;
+    onSlideChange: (field: 'title' | 'content', newText: string, contentIndex?: number) => void;
     onAddItem: () => void;
     onRemoveItem: (index: number) => void;
     onReorderItem: (sourceIndex: number, destinationIndex: number) => void;
     onRegenerateImage: () => void;
+    onMagicButtonClick: (anchorElement: HTMLElement, target: 'title' | 'content', contentIndex?: number) => void;
+    activeAiModification: { target: 'title' | 'content'; contentIndex?: number; } | null;
 }
 
 const AutoResizingTextarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = (props) => {
@@ -37,7 +39,10 @@ const AutoResizingTextarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaEl
     return <textarea ref={textareaRef} {...props} onInput={handleInput} />;
 };
 
-const Slide: React.FC<SlideProps> = ({ slide, theme, layout, isEditing, onSlideChange, onAddItem, onRemoveItem, onReorderItem, onRegenerateImage }) => {
+const Slide: React.FC<SlideProps> = ({ 
+    slide, theme, layout, isEditing, onSlideChange, onAddItem, onRemoveItem, onReorderItem, onRegenerateImage,
+    onMagicButtonClick, activeAiModification 
+}) => {
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const handleDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
@@ -65,19 +70,37 @@ const Slide: React.FC<SlideProps> = ({ slide, theme, layout, isEditing, onSlideC
     const sharedInputStyles = "bg-transparent w-full focus:outline-none resize-none overflow-hidden";
     const titleBaseClasses = "font-bold mb-6";
     const contentBaseClasses = "";
+    
+    const isTitleLoading = activeAiModification?.target === 'title';
 
     const renderEditableTitle = (className: string) => (
-        isEditing ? (
-            <input
-                type="text"
-                value={slide.title}
-                onChange={(e) => onSlideChange('title', e.target.value)}
-                className={`${sharedInputStyles} ${className} focus:bg-white/10 rounded px-2 py-1 -mx-2`}
-                aria-label="Slide Title"
-            />
-        ) : (
-            <h2 className={className}>{slide.title}</h2>
-        )
+         <div className="flex items-start gap-2 group/item">
+            {isEditing && (
+                <div className="flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity duration-200 pt-1">
+                    <button
+                        onClick={(e) => onMagicButtonClick(e.currentTarget, 'title')}
+                        className="p-1 rounded-full text-indigo-400 hover:bg-indigo-500/20"
+                        title="AI Assistant"
+                        disabled={isTitleLoading}
+                    >
+                         {isTitleLoading ? <SpinnerIcon className="w-5 h-5" /> : <SparklesIcon className="w-5 h-5" />}
+                    </button>
+                </div>
+            )}
+            <div className="flex-grow">
+                {isEditing ? (
+                    <input
+                        type="text"
+                        value={slide.title}
+                        onChange={(e) => onSlideChange('title', e.target.value)}
+                        className={`${sharedInputStyles} ${className} focus:bg-white/10 rounded px-2 py-1 -mx-2`}
+                        aria-label="Slide Title"
+                    />
+                ) : (
+                    <h2 className={className}>{slide.title}</h2>
+                )}
+            </div>
+        </div>
     );
 
     const renderEditableContent = (point: string, index: number, className: string) => (
@@ -97,43 +120,54 @@ const Slide: React.FC<SlideProps> = ({ slide, theme, layout, isEditing, onSlideC
     const renderContentList = (textColor: string, bulletColor: string, hoverTextColor: string) => (
         <>
             <ul className="space-y-3">
-                {slide.content.map((point, index) => (
-                    <li
-                        key={index}
-                        className={`group/item flex items-start gap-2 transition-opacity duration-300 ${draggedIndex === index ? 'opacity-30' : 'opacity-100'}`}
-                        draggable={isEditing}
-                        onDragStart={(e) => handleDragStart(e, index)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, index)}
-                        onDragEnd={handleDragEnd}
-                    >
-                        {isEditing && (
-                            <div className="flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity duration-200">
-                                 <div className="flex items-center h-full">
-                                    <button
-                                        className={`cursor-grab text-slate-500 hover:${hoverTextColor}`}
-                                        title="Drag to reorder"
-                                    >
-                                        <GripVerticalIcon className="w-5 h-5" />
-                                    </button>
+                {slide.content.map((point, index) => {
+                     const isContentLoading = activeAiModification?.target === 'content' && activeAiModification?.contentIndex === index;
+                     return (
+                        <li
+                            key={index}
+                            className={`group/item flex items-start gap-2 transition-opacity duration-300 ${draggedIndex === index ? 'opacity-30' : 'opacity-100'}`}
+                            draggable={isEditing}
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, index)}
+                            onDragEnd={handleDragEnd}
+                        >
+                            {isEditing && (
+                                <div className="flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity duration-200">
+                                    <div className="flex items-center h-full pt-1">
+                                        <button
+                                            className={`cursor-grab text-slate-500 hover:${hoverTextColor}`}
+                                            title="Drag to reorder"
+                                        >
+                                            <GripVerticalIcon className="w-5 h-5" />
+                                        </button>
+                                         <button
+                                            onClick={(e) => onMagicButtonClick(e.currentTarget, 'content', index)}
+                                            className="p-1 rounded-full text-indigo-400 hover:bg-indigo-500/20"
+                                            title="AI Assistant"
+                                            disabled={isContentLoading}
+                                        >
+                                            {isContentLoading ? <SpinnerIcon className="w-4 h-4" /> : <SparklesIcon className="w-4 h-4" />}
+                                        </button>
+                                    </div>
                                 </div>
+                            )}
+                             <div className="flex-shrink-0 pt-2.5">
+                                <span className={`w-2.5 h-2.5 rounded-full block ${bulletColor.startsWith('text-') ? bulletColor.replace('text-','bg-') : 'bg-indigo-400'}`}></span>
                             </div>
-                        )}
-                         <div className="flex-shrink-0 pt-2.5">
-                            <span className={`w-2.5 h-2.5 rounded-full block ${bulletColor.startsWith('text-') ? bulletColor.replace('text-','bg-') : 'bg-indigo-400'}`}></span>
-                        </div>
-                        <div className="flex-grow">
-                             {renderEditableContent(point, index, `text-lg md:text-xl ${textColor} ${contentBaseClasses}`)}
-                        </div>
-                        {isEditing && (
-                             <div className="flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity duration-200">
-                                 <button onClick={() => onRemoveItem(index)} className={`p-1 rounded-full text-slate-500 hover:bg-red-500/20 hover:text-red-400`} title="Remove point">
-                                    <TrashIcon className="w-5 h-5" />
-                                </button>
-                             </div>
-                        )}
-                    </li>
-                ))}
+                            <div className="flex-grow">
+                                 {renderEditableContent(point, index, `text-lg md:text-xl ${textColor} ${contentBaseClasses}`)}
+                            </div>
+                            {isEditing && (
+                                 <div className="flex-shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity duration-200">
+                                     <button onClick={() => onRemoveItem(index)} className={`p-1 rounded-full text-slate-500 hover:bg-red-500/20 hover:text-red-400`} title="Remove point">
+                                        <TrashIcon className="w-5 h-5" />
+                                    </button>
+                                 </div>
+                            )}
+                        </li>
+                    )
+                })}
             </ul>
              {isEditing && (
                  <button onClick={onAddItem} className="mt-6 flex items-center gap-2 text-sm font-semibold text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-2 rounded-lg transition-colors self-start">
@@ -168,19 +202,12 @@ const Slide: React.FC<SlideProps> = ({ slide, theme, layout, isEditing, onSlideC
 
     const imageContent = (
          <div className="w-full h-full relative group/image">
-            <img src={slide.imageUrl} alt={slide.imagePrompt} className="w-full h-full object-cover" />
+            <img src={slide.imageUrl} alt={slide.title} className="w-full h-full object-cover" />
             {isEditing && (
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-center items-center p-4 gap-3 text-center animate-fade-in">
-                    <div className="w-full max-w-sm">
-                        <label htmlFor={`image-prompt-${slide.title}`} className="block text-xs font-semibold text-slate-300 mb-1 text-left">Image Prompt</label>
-                        <textarea
-                            id={`image-prompt-${slide.title}`}
-                            value={slide.imagePrompt}
-                            onChange={(e) => onSlideChange('imagePrompt', e.target.value)}
-                            className="w-full bg-slate-900/80 text-white text-sm p-2 rounded-md border border-slate-600 focus:ring-2 focus:ring-indigo-500 resize-none"
-                            rows={3}
-                        />
-                    </div>
+                    <p className="text-sm text-slate-300 max-w-sm">
+                        The image is generated based on the slide's title and content. Edit the text to refine the visual.
+                    </p>
                     <button onClick={onRegenerateImage} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-transform duration-200 transform hover:scale-105 disabled:bg-indigo-800 disabled:cursor-not-allowed" disabled={slide.isImageLoading}>
                         <SparklesIcon className="w-5 h-5" />
                         {slide.isImageLoading ? 'Generating...' : 'Regenerate'}

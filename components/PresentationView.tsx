@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Slide as SlideType, Theme, Layout } from '../types';
 import Slide from './Slide';
 import DesignPanel from './DesignPanel';
@@ -19,11 +20,58 @@ interface PresentationViewProps {
     onSlidesUpdate: (slides: SlideType[]) => void;
     generationTime: number | null;
     onRegenerateImage: (slideIndex: number) => void;
+    onAiTextModification: (slideIndex: number, target: 'title' | 'content', action: string, contentIndex?: number) => Promise<void>;
 }
+
+const AiAssistantMenu: React.FC<{
+    anchorElement: HTMLElement | null;
+    options: { key: string; label: string }[];
+    onSelect: (action: string) => void;
+    onClose: () => void;
+}> = ({ anchorElement, options, onSelect, onClose }) => {
+    if (!anchorElement) return null;
+
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [onClose]);
+
+    const rect = anchorElement.getBoundingClientRect();
+    const style = {
+        top: `${rect.bottom + window.scrollY + 8}px`,
+        left: `${rect.left + window.scrollX}px`,
+    };
+
+    return ReactDOM.createPortal(
+        <div ref={menuRef} style={style} className="absolute z-50 bg-slate-700 rounded-lg shadow-2xl border border-slate-600 animate-fade-in-up-fast overflow-hidden">
+            <ul className="py-1">
+                {options.map(option => (
+                    <li key={option.key}>
+                        <button
+                            onClick={() => onSelect(option.key)}
+                            className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-indigo-600 transition-colors duration-150"
+                        >
+                            {option.label}
+                        </button>
+                    </li>
+                ))}
+            </ul>
+        </div>,
+        document.body
+    );
+};
+
 
 const PresentationView: React.FC<PresentationViewProps> = ({ 
     slides, theme, onThemeChange, layout, onLayoutChange, onDownload, 
-    onRestart, onSlidesUpdate, generationTime, onRegenerateImage 
+    onRestart, onSlidesUpdate, generationTime, onRegenerateImage, onAiTextModification
 }) => {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isEditing, setIsEditing] = useState(false);
@@ -31,6 +79,19 @@ const PresentationView: React.FC<PresentationViewProps> = ({
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isDesignPanelOpen, setIsDesignPanelOpen] = useState(false);
     const presentationContainerRef = useRef<HTMLDivElement>(null);
+    
+    const [aiAssistant, setAiAssistant] = useState<{
+        isOpen: boolean;
+        target: 'title' | 'content';
+        contentIndex?: number;
+        anchorElement: HTMLElement | null;
+    }>({ isOpen: false, target: 'title', anchorElement: null });
+
+    const [activeAiModification, setActiveAiModification] = useState<{
+        target: 'title' | 'content';
+        contentIndex?: number;
+    } | null>(null);
+
 
     const nextSlide = useCallback(() => {
         setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -40,7 +101,7 @@ const PresentationView: React.FC<PresentationViewProps> = ({
         setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
     }, [slides.length]);
     
-    const handleSlideContentChange = (field: 'title' | 'content' | 'speakerNotes' | 'imagePrompt', newText: string, contentIndex?: number) => {
+    const handleSlideContentChange = (field: 'title' | 'content' | 'speakerNotes', newText: string, contentIndex?: number) => {
         const newSlides = slides.map((s, i) => {
             if (i !== currentSlide) return s;
 
@@ -49,8 +110,6 @@ const PresentationView: React.FC<PresentationViewProps> = ({
                 slideToUpdate.title = newText;
             } else if (field === 'speakerNotes') {
                 slideToUpdate.speakerNotes = newText;
-            } else if (field === 'imagePrompt') {
-                slideToUpdate.imagePrompt = newText;
             } else if (field === 'content' && contentIndex !== undefined) {
                 const newContent = [...slideToUpdate.content];
                 newContent[contentIndex] = newText;
@@ -89,6 +148,34 @@ const PresentationView: React.FC<PresentationViewProps> = ({
         newSlides[currentSlide] = slideToUpdate;
         onSlidesUpdate(newSlides);
     };
+    
+     const handleMagicButtonClick = (anchorElement: HTMLElement, target: 'title' | 'content', contentIndex?: number) => {
+        setAiAssistant({ isOpen: true, anchorElement, target, contentIndex });
+    };
+
+    const handleAiActionSelect = async (action: string) => {
+        const { target, contentIndex } = aiAssistant;
+        setAiAssistant(prev => ({ ...prev, isOpen: false }));
+        setActiveAiModification({ target, contentIndex });
+
+        await onAiTextModification(currentSlide, target, action, contentIndex);
+
+        setActiveAiModification(null);
+    };
+
+    const titleActionOptions = [
+        { key: 'Suggest 3 alternatives', label: 'Suggest alternatives' },
+        { key: 'Make it shorter', label: 'Make it shorter' },
+        { key: 'Make it more engaging', label: 'Make it more engaging' },
+    ];
+    
+    const contentActionOptions = [
+        { key: 'Rephrase this point', label: 'Rephrase' },
+        { key: 'Expand on this point', label: 'Expand' },
+        { key: 'Make this point more concise', label: 'Make more concise' },
+        { key: 'Simplify the language', label: 'Simplify language' },
+    ];
+
 
     const handleFullscreenToggle = useCallback(() => {
         if (!document.fullscreenElement) {
@@ -129,6 +216,8 @@ const PresentationView: React.FC<PresentationViewProps> = ({
                                 onRemoveItem={handleRemoveContentItem}
                                 onReorderItem={handleReorderContentItem}
                                 onRegenerateImage={() => onRegenerateImage(currentSlide)}
+                                onMagicButtonClick={handleMagicButtonClick}
+                                activeAiModification={activeAiModification}
                             />
                         </div>
                     ))}
@@ -210,6 +299,16 @@ const PresentationView: React.FC<PresentationViewProps> = ({
                     ))}
                 </div>
             </div>
+            
+            {aiAssistant.isOpen && (
+                <AiAssistantMenu
+                    anchorElement={aiAssistant.anchorElement}
+                    options={aiAssistant.target === 'title' ? titleActionOptions : contentActionOptions}
+                    onSelect={handleAiActionSelect}
+                    onClose={() => setAiAssistant(prev => ({ ...prev, isOpen: false }))}
+                />
+            )}
+
 
             {/* Speaker Notes Section */}
             {isNotesVisible && (

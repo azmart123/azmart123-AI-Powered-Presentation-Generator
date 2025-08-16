@@ -1,7 +1,6 @@
 export interface Slide {
     title: string;
     content: string[];
-    imagePrompt: string;
     imageUrl: string;
     speakerNotes: string;
     isImageLoading?: boolean;

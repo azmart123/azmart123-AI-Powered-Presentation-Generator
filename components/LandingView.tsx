@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Theme, Layout, AdvancedOptions } from '../types';
 import { THEMES, LAYOUTS, DETAIL_LEVELS, PRESENTATION_STYLES } from '../constants';
-import { SparklesIcon, LayoutIcon, ChevronLeftIcon, ChevronRightIcon } from './IconComponents';
+import { 
+    SparklesIcon, LayoutIcon, ChevronLeftIcon, ChevronRightIcon,
+    ChevronDownIcon, DocumentTextIcon, UsersIcon, PhotoIcon 
+} from './IconComponents';
 
 interface LandingViewProps {
     topic: string;
@@ -55,6 +58,7 @@ const LandingView: React.FC<LandingViewProps> = ({
     setAdvancedOptions,
 }) => {
     const [step, setStep] = useState(1);
+    const [openAccordion, setOpenAccordion] = useState<'content' | 'audience' | 'visuals' | null>('content');
 
     const handleAdvancedChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -65,12 +69,51 @@ const LandingView: React.FC<LandingViewProps> = ({
     const handleToggleChange = (name: keyof AdvancedOptions, value: boolean) => {
         setAdvancedOptions({ ...advancedOptions, [name]: value });
     };
+    
+    const handleAccordionToggle = (accordion: 'content' | 'audience' | 'visuals') => {
+        setOpenAccordion(openAccordion === accordion ? null : accordion);
+    };
 
     const inputClass = "w-full p-3 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 text-base placeholder-slate-400 disabled:bg-slate-800/50 disabled:cursor-not-allowed";
     const buttonClass = "flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300 transform hover:scale-105 shadow-lg";
 
     const nextStep = () => setStep(s => s + 1);
     const prevStep = () => setStep(s => s - 1);
+
+    const AccordionItem: React.FC<{
+        id: 'content' | 'audience' | 'visuals';
+        title: string;
+        icon: React.ReactNode;
+        children: React.ReactNode;
+    }> = ({ id, title, icon, children }) => (
+        <div className="border border-slate-700 rounded-xl overflow-hidden bg-slate-800/40 backdrop-blur-sm">
+            <h2>
+                <button
+                    type="button"
+                    onClick={() => handleAccordionToggle(id)}
+                    className={`flex items-center justify-between w-full p-5 font-semibold text-left text-white transition-colors duration-200 hover:bg-slate-700/50 ${openAccordion === id ? 'bg-slate-700/50' : ''}`}
+                    aria-expanded={openAccordion === id}
+                    aria-controls={`accordion-body-${id}`}
+                >
+                    <div className="flex items-center gap-3">
+                        {icon}
+                        <span className="text-lg">{title}</span>
+                    </div>
+                    <ChevronDownIcon className={`w-6 h-6 transform transition-transform duration-300 ${openAccordion === id ? 'rotate-180' : ''}`} />
+                </button>
+            </h2>
+            <div
+                id={`accordion-body-${id}`}
+                className={`grid transition-all duration-500 ease-in-out ${openAccordion === id ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+            >
+                <div className="overflow-hidden">
+                    <div className="p-6 border-t border-slate-700">
+                        {children}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="w-full max-w-4xl mx-auto animate-fade-in-up">
@@ -152,10 +195,8 @@ const LandingView: React.FC<LandingViewProps> = ({
                 
                 {/* Step 3: Details */}
                 {step === 3 && (
-                    <div className="space-y-6 animate-fade-in">
-                        {/* Card 1: Content & Structure */}
-                        <div className="bg-slate-800/60 p-6 rounded-xl border border-slate-700 backdrop-blur-sm">
-                            <h3 className="text-xl font-semibold text-white mb-5">Content & Structure</h3>
+                     <div className="space-y-4 animate-fade-in">
+                        <AccordionItem id="content" title="Content & Structure" icon={<DocumentTextIcon className="w-6 h-6 text-indigo-400" />}>
                             <div className="space-y-6">
                                 <div>
                                     <label htmlFor="slideCount" className="block text-sm font-medium text-slate-300 mb-2">Slide Count: <span className="font-bold text-white">{advancedOptions.slideCount}</span></label>
@@ -163,18 +204,9 @@ const LandingView: React.FC<LandingViewProps> = ({
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-300 mb-2">Detail Level</label>
-                                    <div className="grid grid-cols-3 gap-2 rounded-lg bg-slate-900 p-1">
+                                    <div className="grid grid-cols-3 gap-2 rounded-lg bg-slate-900/70 p-1">
                                         {DETAIL_LEVELS.map(level => (
-                                            <button
-                                                key={level}
-                                                type="button"
-                                                onClick={() => setAdvancedOptions({ ...advancedOptions, detailLevel: level })}
-                                                className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500 ${
-                                                    advancedOptions.detailLevel === level
-                                                        ? 'bg-indigo-600 text-white shadow-md'
-                                                        : 'bg-transparent text-slate-300 hover:bg-slate-700'
-                                                }`}
-                                            >
+                                            <button key={level} type="button" onClick={() => setAdvancedOptions({ ...advancedOptions, detailLevel: level })} className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500 ${advancedOptions.detailLevel === level ? 'bg-indigo-600 text-white shadow-md' : 'bg-transparent text-slate-300 hover:bg-slate-700'}`}>
                                                 {level}
                                             </button>
                                         ))}
@@ -185,26 +217,15 @@ const LandingView: React.FC<LandingViewProps> = ({
                                     <input type="text" id="keyTakeaway" name="keyTakeaway" value={advancedOptions.keyTakeaway} onChange={handleAdvancedChange} placeholder="The main message to leave with the audience" className={inputClass} />
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Card 2: Audience & Tone */}
-                        <div className="bg-slate-800/60 p-6 rounded-xl border border-slate-700 backdrop-blur-sm">
-                            <h3 className="text-xl font-semibold text-white mb-5">Audience & Tone</h3>
-                            <div className="space-y-6">
+                        </AccordionItem>
+                        
+                        <AccordionItem id="audience" title="Audience & Tone" icon={<UsersIcon className="w-6 h-6 text-indigo-400" />}>
+                             <div className="space-y-6">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-300 mb-2">Presentation Style</label>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                         {PRESENTATION_STYLES.map(style => (
-                                            <button
-                                                key={style}
-                                                type="button"
-                                                onClick={() => setAdvancedOptions({ ...advancedOptions, presentationStyle: style })}
-                                                className={`px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500 ${
-                                                    advancedOptions.presentationStyle === style
-                                                        ? 'bg-indigo-600 border-transparent text-white scale-105 shadow-lg'
-                                                        : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-700 hover:border-slate-500'
-                                                }`}
-                                            >
+                                            <button key={style} type="button" onClick={() => setAdvancedOptions({ ...advancedOptions, presentationStyle: style })} className={`px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500 ${advancedOptions.presentationStyle === style ? 'bg-indigo-600 border-transparent text-white scale-105 shadow-lg' : 'bg-slate-900/70 border-slate-700 text-slate-300 hover:bg-slate-700 hover:border-slate-500'}`}>
                                                 {style}
                                             </button>
                                         ))}
@@ -213,42 +234,40 @@ const LandingView: React.FC<LandingViewProps> = ({
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label htmlFor="targetAudience" className="block text-sm font-medium text-slate-300 mb-2">Target Audience <span className="text-slate-400">(Optional)</span></label>
-                                        <input type="text" id="targetAudience" name="targetAudience" value={advancedOptions.targetAudience} onChange={handleAdvancedChange} placeholder="e.g., University students, marketing VPs" className={inputClass} />
+                                        <input type="text" id="targetAudience" name="targetAudience" value={advancedOptions.targetAudience} onChange={handleAdvancedChange} placeholder="e.g., University students" className={inputClass} />
                                     </div>
                                     <div>
                                         <label htmlFor="tone" className="block text-sm font-medium text-slate-300 mb-2">Tone of Voice <span className="text-slate-400">(Optional)</span></label>
-                                        <input type="text" id="tone" name="tone" value={advancedOptions.tone} onChange={handleAdvancedChange} placeholder="e.g., enthusiastic, formal, witty" className={inputClass} />
+                                        <input type="text" id="tone" name="tone" value={advancedOptions.tone} onChange={handleAdvancedChange} placeholder="e.g., enthusiastic, witty" className={inputClass} />
                                     </div>
                                     <div>
                                         <label htmlFor="brandName" className="block text-sm font-medium text-slate-300 mb-2">Brand Name <span className="text-slate-400">(Optional)</span></label>
-                                        <input type="text" id="brandName" name="brandName" value={advancedOptions.brandName} onChange={handleAdvancedChange} placeholder="Your company or product name" className={inputClass} />
+                                        <input type="text" id="brandName" name="brandName" value={advancedOptions.brandName} onChange={handleAdvancedChange} placeholder="Your company name" className={inputClass} />
                                     </div>
                                     <div>
                                         <label htmlFor="additionalKeywords" className="block text-sm font-medium text-slate-300 mb-2">Keywords <span className="text-slate-400">(Optional)</span></label>
-                                        <input type="text" id="additionalKeywords" name="additionalKeywords" value={advancedOptions.additionalKeywords} onChange={handleAdvancedChange} placeholder="Comma-separated keywords" className={inputClass} />
+                                        <input type="text" id="additionalKeywords" name="additionalKeywords" value={advancedOptions.additionalKeywords} onChange={handleAdvancedChange} placeholder="Comma-separated" className={inputClass} />
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Card 3: Visuals */}
-                        <div className="bg-slate-800/60 p-6 rounded-xl border border-slate-700 backdrop-blur-sm">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-semibold text-white">Visuals</h3>
-                                <button type="button" role="switch" aria-checked={advancedOptions.includeImages} onClick={() => handleToggleChange('includeImages', !advancedOptions.includeImages)} className={`${advancedOptions.includeImages ? 'bg-indigo-600' : 'bg-slate-600'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800`}>
+                        </AccordionItem>
+                        
+                        <AccordionItem id="visuals" title="Visuals" icon={<PhotoIcon className="w-6 h-6 text-indigo-400" />}>
+                            <div className="flex justify-between items-center mb-6">
+                                <label htmlFor="includeImagesToggle" className="text-sm font-medium text-slate-300">Generate Slide Images</label>
+                                <button id="includeImagesToggle" type="button" role="switch" aria-checked={advancedOptions.includeImages} onClick={() => handleToggleChange('includeImages', !advancedOptions.includeImages)} className={`${advancedOptions.includeImages ? 'bg-indigo-600' : 'bg-slate-600'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800`}>
                                     <span aria-hidden="true" className={`${advancedOptions.includeImages ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`} />
                                 </button>
                             </div>
-                            <div className={`pt-6 transition-all duration-500 ease-in-out ${advancedOptions.includeImages ? 'opacity-100 max-h-40' : 'opacity-0 max-h-0 overflow-hidden pointer-events-none'}`}>
+                             <div className={`transition-all duration-500 ease-in-out ${advancedOptions.includeImages ? 'opacity-100 max-h-40' : 'opacity-50 pointer-events-none'}`}>
                                 <div>
                                     <label htmlFor="imageStyle" className="block text-sm font-medium text-slate-300 mb-2">Image Style</label>
-                                    <input type="text" id="imageStyle" name="imageStyle" value={advancedOptions.imageStyle} onChange={handleAdvancedChange} placeholder="e.g., photorealistic, minimalist, abstract" className={inputClass} />
+                                    <input type="text" id="imageStyle" name="imageStyle" value={advancedOptions.imageStyle} onChange={handleAdvancedChange} placeholder="e.g., photorealistic, minimalist, abstract" className={inputClass} disabled={!advancedOptions.includeImages} />
                                     <p className="text-xs text-slate-400 mt-2">Describe the visual aesthetic for the generated images.</p>
                                 </div>
                             </div>
-                        </div>
+                        </AccordionItem>
                         
-                        {/* Navigation */}
                         <div className="mt-8 flex justify-between items-center">
                             <button onClick={prevStep} className={`${buttonClass} bg-slate-600 hover:bg-slate-700`}>
                                 <ChevronLeftIcon className="w-5 h-5"/> Back
